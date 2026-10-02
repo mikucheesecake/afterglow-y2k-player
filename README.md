@@ -1,14 +1,14 @@
 # Afterglow
 
-A minimalist Y2K-inspired personal music player. Search for songs and artists, play short previews, save favorites, and make playlists that stay in your browser.
+A simple Y2K-inspired music player for MP3 files you already have.
 
 ## Features
 
-- Live song and artist search
-- 30-second audio previews when Apple provides one
-- Favorites and custom playlists saved in local storage
+- Choose multiple MP3 files or drag them into the player
+- Play full tracks, seek, pause, and skip through the queue
+- Remove files from the current queue
 - Responsive layout for desktop and mobile
-- Playback controls, track seeking, and clear empty/error states
+- Files are read and played locally in your browser; nothing is uploaded
 
 ## Run locally
 
@@ -19,11 +19,11 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite.
+Open the local URL printed by Vite, then choose MP3 files from your device.
 
-## Catalog and previews
+## Your files
 
-Search results and preview links come from Apple's public iTunes Search API. This is a search-preview experience, not a complete streaming catalog: available previews are up to 30 seconds, and some tracks do not have a preview. Track details and cover artwork are supplied by Apple. Favorites and playlists are stored locally in the browser and do not sync between devices.
+Afterglow does not copy your music to a server. The browser keeps the selected files available only while the page is open; after a refresh, select them again to rebuild your queue.
 
 ## Tech
 

@@ -5,7 +5,8 @@ A simple Y2K-inspired music player for MP3 files you already have.
 ## Features
 
 - Choose multiple MP3 files or drag them into the player
-- Play full tracks, seek, pause, and skip through the queue
+- Play full tracks, seek, pause, skip, and adjust playback speed
+- Set a sleep timer to pause playback after 15, 30, 45, or 60 minutes
 - Remove files from the current queue
 - Responsive layout for desktop and mobile
 - Files are read and played locally in your browser; nothing is uploaded

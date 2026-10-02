@@ -7,6 +7,7 @@ import {
   Play,
   SkipBack,
   SkipForward,
+  Timer,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -36,10 +37,14 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [toast, setToast] = useState('');
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [sleepOpen, setSleepOpen] = useState(false);
+  const [sleepRemaining, setSleepRemaining] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrls = useRef<string[]>([]);
   const toastTimer = useRef<number | null>(null);
+  const sleepInterval = useRef<number | null>(null);
   const currentTrack = tracks.find(track => track.id === currentTrackId) ?? null;
 
   const announce = (message: string) => {
@@ -50,8 +55,13 @@ export default function App() {
 
   useEffect(() => () => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    if (sleepInterval.current !== null) window.clearInterval(sleepInterval.current);
     objectUrls.current.forEach(url => URL.revokeObjectURL(url));
   }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate, currentTrackId]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -195,6 +205,38 @@ export default function App() {
         announce('This MP3 could not be played in your browser.');
       });
     }
+  };
+
+  const setSleepTimer = (minutes: number | null) => {
+    if (sleepInterval.current !== null) {
+      window.clearInterval(sleepInterval.current);
+      sleepInterval.current = null;
+    }
+
+    if (minutes === null) {
+      setSleepRemaining(null);
+      setSleepOpen(false);
+      announce('Sleep timer turned off.');
+      return;
+    }
+
+    const deadline = Date.now() + minutes * 60 * 1000;
+    setSleepRemaining(minutes * 60);
+    setSleepOpen(false);
+    sleepInterval.current = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSleepRemaining(remaining);
+
+      if (remaining === 0) {
+        if (sleepInterval.current !== null) window.clearInterval(sleepInterval.current);
+        sleepInterval.current = null;
+        setSleepRemaining(null);
+        audioRef.current?.pause();
+        setPlaying(false);
+        announce('Sleep timer finished. Playback paused.');
+      }
+    }, 1000);
+    announce(`Sleep timer set for ${minutes} minutes.`);
   };
 
   const updatePosition = (value: number) => {
@@ -346,31 +388,81 @@ export default function App() {
           </div>
         </div>
 
-        <div className="player-controls">
-          <button
-            className="control-button skip-control"
-            aria-label="Previous track"
-            disabled={tracks.length < 2}
-            onClick={() => stepTrack(-1)}
-          >
-            <SkipBack size={17} fill="currentColor" />
-          </button>
-          <button
-            className="control-button main"
-            aria-label={playing ? 'Pause' : 'Play'}
-            disabled={!currentTrack}
-            onClick={togglePlayback}
-          >
-            {playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
-          </button>
-          <button
-            className="control-button skip-control"
-            aria-label="Next track"
-            disabled={tracks.length < 2}
-            onClick={() => stepTrack(1)}
-          >
-            <SkipForward size={17} fill="currentColor" />
-          </button>
+        <div className="dock-actions">
+          <div className="player-controls">
+            <button
+              className="control-button skip-control"
+              aria-label="Previous track"
+              disabled={tracks.length < 2}
+              onClick={() => stepTrack(-1)}
+            >
+              <SkipBack size={17} fill="currentColor" />
+            </button>
+            <button
+              className="control-button main"
+              aria-label={playing ? 'Pause' : 'Play'}
+              disabled={!currentTrack}
+              onClick={togglePlayback}
+            >
+              {playing ? <Pause size={17} fill="currentColor" /> : <Play size={17} fill="currentColor" />}
+            </button>
+            <button
+              className="control-button skip-control"
+              aria-label="Next track"
+              disabled={tracks.length < 2}
+              onClick={() => stepTrack(1)}
+            >
+              <SkipForward size={17} fill="currentColor" />
+            </button>
+          </div>
+
+          <div className="extra-controls">
+            <label className="speed-control">
+              <span className="visually-hidden">Playback speed</span>
+              <select
+                className="speed-select"
+                aria-label="Playback speed"
+                value={playbackRate}
+                onChange={event => setPlaybackRate(Number(event.target.value))}
+              >
+                {[0.75, 1, 1.25, 1.5, 2].map(rate => (
+                  <option key={rate} value={rate}>{rate}×</option>
+                ))}
+              </select>
+            </label>
+
+            <div
+              className="sleep-control"
+              onKeyDown={event => {
+                if (event.key === 'Escape') setSleepOpen(false);
+              }}
+            >
+              <button
+                className={`sleep-button${sleepRemaining !== null ? ' active' : ''}`}
+                aria-label={sleepRemaining === null ? 'Set sleep timer' : `Sleep timer: ${formatTime(sleepRemaining)} remaining`}
+                aria-expanded={sleepOpen}
+                aria-controls="sleep-timer-options"
+                onClick={() => setSleepOpen(open => !open)}
+              >
+                <Timer size={15} />
+                <span>{sleepRemaining === null ? 'Sleep' : formatTime(sleepRemaining)}</span>
+              </button>
+              {sleepOpen && (
+                <div className="sleep-popover" id="sleep-timer-options" role="group" aria-label="Sleep timer options">
+                  <strong>Pause playback in</strong>
+                  <div className="sleep-options">
+                    {[15, 30, 45, 60].map(minutes => (
+                      <button key={minutes} onClick={() => setSleepTimer(minutes)}>{minutes} min</button>
+                    ))}
+                  </div>
+                  <p>Playback pauses when the timer ends.</p>
+                  {sleepRemaining !== null && (
+                    <button className="cancel-timer" onClick={() => setSleepTimer(null)}>Turn timer off</button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="time-control">
